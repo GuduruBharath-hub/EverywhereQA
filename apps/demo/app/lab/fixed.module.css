@@ -1,0 +1,57 @@
+.bookingCard.bookingCard {
+  position: static;
+  width: min(980px, 90vw);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(100px, .5fr) minmax(180px, .8fr);
+  margin-inline: auto;
+}
+
+.bookingCard > label,
+.bookingCard > div {
+  min-width: 0;
+  border-inline-end: 1px solid #ddd;
+  padding: 5px 10px;
+}
+
+.bookingCard label > span {
+  display: block;
+  color: #4d514d;
+  font-size: 10px;
+}
+
+.bookingCard small {
+  color: #4d514d;
+}
+
+.bookButton.bookButton {
+  min-height: 56px;
+  height: auto;
+  white-space: normal;
+  overflow: visible;
+  background: #1d493b;
+  color: white;
+}
+
+.promo {
+  width: auto;
+  max-width: 100%;
+  white-space: normal;
+  overflow: visible;
+}
+
+.notes.notes b {
+  color: #8b2f1f;
+}
+
+@media (max-width: 760px) {
+  .bookingCard.bookingCard {
+    width: 90vw;
+    grid-template-columns: 1fr;
+    margin-inline: auto;
+  }
+
+  .bookingCard > label,
+  .bookingCard > div {
+    border-inline-end: 0;
+    border-block-end: 1px solid #ddd;
+  }
+}

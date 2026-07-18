@@ -1,0 +1,22 @@
+{
+  "name": "everywhere-qa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fix once. Work everywhere.",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @everywhere-qa/engine && npm run build -w @everywhere-qa/demo",
+    "dev": "npm run dev -w @everywhere-qa/demo",
+    "test": "npm run test -w @everywhere-qa/engine",
+    "test:integration": "npm run build -w @everywhere-qa/engine && node scripts/verify-fixtures.mjs",
+    "typecheck": "npm run typecheck -w @everywhere-qa/engine && npm run typecheck -w @everywhere-qa/demo",
+    "audit:demo": "npm run build -w @everywhere-qa/engine && node packages/engine/dist/cli.js audit --url http://localhost:3000/lab-broken --repo apps/demo --out artifacts/demo-audit"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

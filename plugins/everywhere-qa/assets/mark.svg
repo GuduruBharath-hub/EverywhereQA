@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">Everywhere QA mark</title>
+  <rect width="128" height="128" rx="32" fill="#0D100F"/>
+  <circle cx="64" cy="64" r="39" fill="none" stroke="#9CE6BD" stroke-width="8"/>
+  <path d="M25 64h78M64 25c13 12 20 25 20 39S77 91 64 103M64 25C51 37 44 50 44 64s7 27 20 39" fill="none" stroke="#9CE6BD" stroke-width="6" stroke-linecap="round"/>
+  <path d="m52 65 8 8 18-20" fill="none" stroke="#F3CF70" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

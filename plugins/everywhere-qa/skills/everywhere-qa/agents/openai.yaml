@@ -1,0 +1,4 @@
+interface:
+  display_name: "Everywhere QA"
+  short_description: "Audit, fix, and verify global web readiness"
+  default_prompt: "Use $everywhere-qa to audit and fix this React app for users everywhere."
