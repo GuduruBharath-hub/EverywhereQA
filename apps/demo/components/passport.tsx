@@ -6,7 +6,7 @@ import { findings, scenarios } from "../lib/sample-passport";
 export function Passport() {
   const [mode, setMode] = useState<"before" | "after">("before");
   const [selected, setSelected] = useState<(typeof scenarios)[number]["id"]>("rtl");
-  const overall = mode === "before" ? 66 : 100;
+  const overall = mode === "before" ? 64 : 100;
   return <div className="passport-shell" aria-label="Interactive sample Global Passport">
     <div className="passport-topline">
       <div><span className="kicker">Global Passport · 7f2ad093</span><strong>Tripboard sample</strong></div>
@@ -17,7 +17,7 @@ export function Passport() {
     </div>
     <div className="passport-score">
       <div className="score-orbit" style={{ "--score": `${overall * 3.6}deg` } as React.CSSProperties}><span>{overall}</span><small>/100</small></div>
-      <div><p>Readiness score</p><h3>{mode === "before" ? "Barriers found in every context." : "Twelve barriers fixed and retested."}</h3><span className={mode === "before" ? "delta down" : "delta"}>{mode === "before" ? "12 deterministic findings" : "+34 verified points"}</span></div>
+      <div><p>Readiness score</p><h3>{mode === "before" ? "Barriers found in every context." : "Thirteen barriers fixed and retested."}</h3><span className={mode === "before" ? "delta down" : "delta"}>{mode === "before" ? "13 deterministic findings" : "+36 verified points"}</span></div>
     </div>
     <div className="scenario-strip">
       {scenarios.map((scenario) => <button key={scenario.id} className={selected === scenario.id ? "selected" : ""} onClick={() => setSelected(scenario.id)}>

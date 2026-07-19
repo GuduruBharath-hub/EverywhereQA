@@ -2,6 +2,10 @@
 
 > Fix once. Work everywhere.
 
+[Live demo](https://everywhere-qa-demo-2ifz.vercel.app/) · [Broken fixture](https://everywhere-qa-demo-2ifz.vercel.app/lab-broken) · [Repaired fixture](https://everywhere-qa-demo-2ifz.vercel.app/lab) · [Source code](https://github.com/GuduruBharath-hub/EverywhereQA)
+
+**OpenAI Build Week category:** Developer Tools
+
 Everywhere QA is a local-first Codex plugin that tests a web app across four global user conditions, gives GPT‑5.6 a deterministic evidence ledger, repairs the React/Next.js source, and reruns the exact same checks to prove the result.
 
 It is an OpenAI Build Week Developer Tools entry. The core loop is:
@@ -96,6 +100,27 @@ node packages/engine/dist/cli.js verify `
 
 On POSIX shells, replace PowerShell backticks with `\` line continuations.
 
+## Test without rebuilding
+
+Judges can evaluate the product through the hosted companion site:
+
+1. Open the [live demo](https://everywhere-qa-demo-2ifz.vercel.app/).
+2. Open the [intentionally broken fixture](https://everywhere-qa-demo-2ifz.vercel.app/lab-broken) and inspect its inaccessible inputs, clipped control, locale literals, fixed-width card, and RTL/mobile overflow.
+3. Use **View repaired** in the fixture header to open `/lab` without editing the URL.
+4. Use **View broken** to move back and compare both states.
+5. Review the reproducible [64-to-100 verification result](docs/RESULTS.md).
+
+The hosted pages demonstrate the visible before/after experience. Running the CLI or installed Codex plugin locally produces the complete JSON/HTML Global Passport and repository-aware repair workflow.
+
+## Supported platforms
+
+- **Validated host:** Windows with Node.js 20+ and npm.
+- **Expected hosts:** macOS and Linux environments capable of running Node.js 20+, npm, and Playwright Chromium. These hosts have not yet received the same clean-environment validation as Windows.
+- **Browser:** Playwright Chromium only in the MVP.
+- **Audit targets:** Any reachable HTTP(S) web page.
+- **Automatic repair targets:** React or Next.js repositories written in TypeScript.
+- **Codex surface:** Codex CLI/app with GPT‑5.6 selected. The deterministic engine itself does not require an OpenAI API key.
+
 ## Install the Codex plugin
 
 This repository includes a local marketplace at `.agents/plugins/marketplace.json`.
@@ -146,11 +171,22 @@ npm run build
 
 The unit suite covers scoring weights, heuristic isolation, stable comparison, deduplication, pseudo-localization, report serialization, and malformed baselines. `/lab-broken` provides known integration failures; `/lab` shows the verified repaired state.
 
-With a production demo server running on port 3001, run `npm run test:integration` to assert known rule IDs, screenshot artifacts, a meaningful score increase, zero introduced regressions, and an unchanged source digest during audit mode. See the [verified 66 to 100 result](docs/RESULTS.md).
+With a production demo server running on port 3001, run `npm run test:integration` to assert known rule IDs, screenshot artifacts, a meaningful score increase, zero introduced regressions, and an unchanged source digest during audit mode. See the [verified 64 to 100 result](docs/RESULTS.md).
 
 ## How Codex and GPT‑5.6 are used
 
-The browser engine creates the evidence; the model does not manufacture findings. GPT‑5.6 in Codex reads the structured report and screenshots, traces high-impact findings to React or Next.js source, applies scoped repairs, runs the project's existing checks, and invokes Everywhere QA again for verification. This keeps measurement deterministic while using repository-aware reasoning where it is most valuable.
+The browser engine creates the evidence; the model does not manufacture findings. GPT‑5.6 in Codex reads the structured report and screenshots, traces high-impact findings to React or Next.js source, applies scoped repairs, runs the project's existing checks, and invokes Everywhere QA again for verification.
+
+Codex accelerated the project by helping us:
+
+- Turn the product brief into the TypeScript workspace, Playwright engine, Codex plugin, fixtures, report UI, tests, and deployment configuration.
+- Choose stable finding signatures and rerun identical scenarios so a repair is measured instead of merely claimed.
+- Separate deterministic browser failures from heuristic source advisories; only deterministic evidence affects scoring.
+- Establish an explicit authorization boundary: audit-only prompts remain read-only, while prompts containing `fix` or `repair` permit scoped source changes.
+- Diagnose Windows certificate handling, React hydration timing during screenshots, development-versus-production network measurements, and Vercel deployment configuration.
+- Review screenshots and responsive behavior while making product, visual-design, and testing decisions in the primary build thread.
+
+GPT‑5.6 is meaningfully used as the repository-aware repair layer. It prioritizes deterministic findings, locates the responsible React/CSS source, chooses minimal changes, runs existing checks, and verifies the result against the saved baseline. This keeps measurement deterministic while using model reasoning where source context and engineering judgment matter most.
 
 ## Limitations
 

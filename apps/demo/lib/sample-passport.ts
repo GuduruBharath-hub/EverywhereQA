@@ -2,7 +2,7 @@ export type SampleFinding = { severity: "serious" | "moderate" | "minor"; title:
 
 export const scenarios = [
   { id: "access", flag: "⌨", name: "Access", detail: "Keyboard + axe", before: 48, after: 100 },
-  { id: "rtl", flag: "ع", name: "RTL + expansion", detail: "Arabic + 40%", before: 43, after: 100 },
+  { id: "rtl", flag: "ع", name: "RTL + expansion", detail: "Arabic + 40%", before: 36, after: 100 },
   { id: "expand", flag: "IN", name: "Locale", detail: "hi-IN formatting", before: 100, after: 100 },
   { id: "network", flag: "3G", name: "Resilience", detail: "India mobile", before: 93, after: 100 }
 ] as const;
