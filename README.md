@@ -111,6 +111,8 @@ Start the target app, open a fresh Codex thread, select GPT‑5.6, and prompt. F
 Audit and fix this app for users everywhere: http://127.0.0.1:3001/lab-broken
 ```
 
+Run repair demonstrations in a disposable Git branch or fresh clone. The workflow intentionally edits `/lab-broken`; do not commit that repaired demo state over the canonical broken fixture. `/lab` is the permanent repaired reference used for comparison.
+
 The skill distinguishes read-only audit requests from explicit repair authorization. Audit-only requests never edit target source.
 
 ## CLI
