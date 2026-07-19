@@ -1,4 +1,4 @@
-import type { AuditReport, Finding, Pillar, Scores, VerificationDelta } from "./types.js";
+import type { AuditPage, AuditReport, Finding, GatePolicy, GateResult, PageScores, Pillar, Scores, VerificationDelta } from "./types.js";
 import { stableSignature } from "./findings.js";
 
 const weights: Record<Pillar, number> = {
@@ -10,6 +10,15 @@ const weights: Record<Pillar, number> = {
 
 const penalties = { critical: 20, serious: 12, moderate: 7, minor: 3 } as const;
 
+function overall(scores: Omit<Scores, "overall">): number {
+  return Math.round(
+    scores.accessibility * weights.accessibility +
+    scores.rtl * weights.rtl +
+    scores.locale * weights.locale +
+    scores.resilience * weights.resilience
+  );
+}
+
 export function calculateScores(findings: Finding[]): Scores {
   const deterministic = findings.filter((item) => item.confidence === "deterministic");
   const pillarScore = (pillar: Pillar) => {
@@ -18,18 +27,29 @@ export function calculateScores(findings: Finding[]): Scores {
       .reduce((sum, item) => sum + penalties[item.severity], 0);
     return Math.max(0, 100 - deduction);
   };
+  const scores = {
+    accessibility: pillarScore("accessibility"),
+    rtl: pillarScore("rtl"),
+    locale: pillarScore("locale"),
+    resilience: pillarScore("resilience")
+  };
+  return { overall: overall(scores), ...scores };
+}
 
-  const accessibility = pillarScore("accessibility");
-  const rtl = pillarScore("rtl");
-  const locale = pillarScore("locale");
-  const resilience = pillarScore("resilience");
-  const overall = Math.round(
-    accessibility * weights.accessibility +
-      rtl * weights.rtl +
-      locale * weights.locale +
-      resilience * weights.resilience
-  );
-  return { overall, accessibility, rtl, locale, resilience };
+export function calculatePageScores(findings: Finding[], pages: AuditPage[]): { scores: Scores; pageScores: PageScores[] } {
+  const pageScores = pages.map((page) => ({
+    pageId: page.id,
+    pageUrl: page.url,
+    scores: calculateScores(findings.filter((item) => item.pageId === page.id))
+  }));
+  const average = (pillar: keyof Omit<Scores, "overall">) => Math.round(pageScores.reduce((sum, page) => sum + page.scores[pillar], 0) / pageScores.length);
+  const scoresWithoutOverall = {
+    accessibility: average("accessibility"),
+    rtl: average("rtl"),
+    locale: average("locale"),
+    resilience: average("resilience")
+  };
+  return { scores: { overall: overall(scoresWithoutOverall), ...scoresWithoutOverall }, pageScores };
 }
 
 export function compareReports(baseline: AuditReport, currentFindings: Finding[], currentOverall: number): VerificationDelta {
@@ -43,6 +63,17 @@ export function compareReports(baseline: AuditReport, currentFindings: Finding[]
     fixed,
     remaining,
     introduced,
-    scoreChange: currentOverall - baseline.scores.overall
+    scoreChange: currentOverall - baseline.scores.overall,
+    visualComparisons: [],
+    gate: { policy: "off", status: "not-run", reasons: [] }
   };
+}
+
+export function evaluateGate(verification: VerificationDelta, policy: GatePolicy): GateResult {
+  if (policy === "off") return { policy, status: "not-run", reasons: [] };
+  const reasons: string[] = [];
+  if (verification.scoreChange < 0) reasons.push(`Overall score decreased by ${Math.abs(verification.scoreChange)} point(s).`);
+  const severe = verification.introduced.filter((item) => item.severity === "critical" || item.severity === "serious");
+  if (severe.length) reasons.push(`${severe.length} new serious or critical deterministic finding(s) were introduced.`);
+  return { policy, status: reasons.length ? "failed" : "passed", reasons };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateScores, compareReports } from "./scoring.js";
+import { calculatePageScores, calculateScores, compareReports, evaluateGate } from "./scoring.js";
 import { dedupeFindings, finding } from "./findings.js";
 import type { AuditReport } from "./types.js";
 
@@ -12,6 +12,13 @@ describe("scoring", () => {
 
   it("does not deduct heuristic advisories", () => {
     expect(calculateScores([{ ...sample, confidence: "heuristic" }]).overall).toBe(100);
+  });
+
+  it("averages page scores instead of multiplying a route penalty", () => {
+    const firstPage = { ...sample, pageId: "home", pageUrl: "https://example.com/" };
+    const result = calculatePageScores([firstPage], [{ id: "home", url: "https://example.com/" }, { id: "about", url: "https://example.com/about" }]);
+    expect(result.pageScores.map((page) => page.scores.overall)).toEqual([96, 100]);
+    expect(result.scores.overall).toBe(98);
   });
 });
 
@@ -28,5 +35,17 @@ describe("report comparison", () => {
 
   it("deduplicates stable finding ids", () => {
     expect(dedupeFindings([sample, sample])).toHaveLength(1);
+  });
+
+  it("keeps the same selector on different pages distinct", () => {
+    expect(dedupeFindings([{ ...sample, id: "one", pageId: "home" }, { ...sample, id: "two", pageId: "checkout" }])).toHaveLength(2);
+  });
+
+  it("fails the regression gate only for score drops or introduced serious findings", () => {
+    const delta = compareReports({ runId: "before", findings: [], scores: { overall: 100 } } as AuditReport, [{ ...sample, pageId: "target" }], 96);
+    const gate = evaluateGate(delta, "regression");
+    expect(gate.status).toBe("failed");
+    expect(gate.reasons).toHaveLength(2);
+    expect(evaluateGate({ ...delta, introduced: [], scoreChange: 4 }, "regression").status).toBe("passed");
   });
 });

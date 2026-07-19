@@ -1,12 +1,21 @@
 {
   "name": "everywhere-qa",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Audit, repair, and verify web apps across global user conditions.",
   "author": {
-    "name": "Everywhere QA Team"
+    "name": "Guduru Bharath",
+    "url": "https://github.com/GuduruBharath-hub"
   },
+  "homepage": "https://everywhere-qa-demo-2ifz.vercel.app/",
+  "repository": "https://github.com/GuduruBharath-hub/EverywhereQA",
   "license": "MIT",
-  "keywords": ["accessibility", "localization", "rtl", "quality", "playwright"],
+  "keywords": [
+    "accessibility",
+    "localization",
+    "rtl",
+    "quality",
+    "playwright"
+  ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Everywhere QA",
@@ -14,7 +23,11 @@
     "longDescription": "Test a web app across accessibility, Arabic RTL, expanded copy, and constrained Indian mobile conditions. Let Codex repair the repository, then rerun the same checks to prove the delta.",
     "developerName": "Everywhere QA Team",
     "category": "Developer Tools",
-    "capabilities": ["Interactive", "Read", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
     "defaultPrompt": [
       "Audit this app for users everywhere.",
       "Fix the highest-impact barriers and verify them.",
@@ -22,6 +35,8 @@
     ],
     "brandColor": "#1D493B",
     "composerIcon": "./assets/mark.svg",
-    "logo": "./assets/logo.svg"
+    "logo": "./assets/logo.svg",
+    "logoDark": "./assets/logo-dark.svg",
+    "websiteURL": "https://everywhere-qa-demo-2ifz.vercel.app/"
   }
 }

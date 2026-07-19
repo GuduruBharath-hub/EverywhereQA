@@ -17,4 +17,4 @@
 
 ## Verification
 
-A repair is verified only when the same stable signature is absent from the verification report and no new serious or critical finding is introduced. If a screenshot looks worse despite a score increase, report the conflict and stop rather than claiming success.
+A repair is verified only when the same page-aware stable signature is absent from the verification report and no new serious or critical finding is introduced. Routes and profiles must match the baseline. If the regression gate fails or a matched screenshot looks worse despite a score increase, report the conflict and stop rather than claiming success.

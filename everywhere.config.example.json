@@ -1,0 +1,28 @@
+{
+  "routes": [
+    { "id": "home", "path": "/" },
+    { "id": "booking", "path": "/lab-broken" }
+  ],
+  "profiles": {
+    "accessibility": {
+      "locale": "en-US",
+      "viewport": { "width": 1440, "height": 900 }
+    },
+    "rtl": {
+      "locale": "ar-SA",
+      "timezoneId": "Asia/Riyadh",
+      "viewport": { "width": 390, "height": 844 }
+    },
+    "textExpansion": {
+      "locale": "en-XA",
+      "ratio": 0.4,
+      "viewport": { "width": 390, "height": 844 }
+    },
+    "resilience": {
+      "locale": "hi-IN",
+      "timezoneId": "Asia/Kolkata",
+      "viewport": { "width": 390, "height": 844 },
+      "network": { "latencyMs": 250, "downloadKbps": 768, "uploadKbps": 384 }
+    }
+  }
+}

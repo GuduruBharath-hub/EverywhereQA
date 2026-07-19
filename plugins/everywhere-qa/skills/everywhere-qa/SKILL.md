@@ -1,6 +1,6 @@
 ---
 name: everywhere-qa
-description: Audit, repair, and verify React or Next.js web applications across accessibility, keyboard use, Arabic RTL mobile layouts, 40% pseudo-localized text expansion, Indian locale behavior, and constrained mobile networks. Use when Codex is asked for global-readiness QA, accessibility or localization testing, RTL validation, responsive text stress testing, a Global Passport report, or an evidence-backed audit-fix-verify loop.
+description: Audit, repair, gate, and verify React or Next.js web applications across accessibility, keyboard use, RTL mobile layouts, pseudo-localized text expansion, localized behavior, and constrained mobile networks. Use when Codex is asked for global-readiness QA, multi-route accessibility or localization testing, RTL validation, responsive text stress testing, a Global Passport report, or an evidence-backed audit-fix-verify loop.
 ---
 
 # Everywhere QA
@@ -9,13 +9,15 @@ Create an evidence-backed Global Passport with deterministic Playwright and axe-
 
 ## Resolve the runner
 
-Resolve the plugin root as the directory two levels above this skill directory. Run:
+Resolve the plugin root as the directory two levels above this skill directory. The runner invokes the pinned public npm CLI, so it works from an installed Git marketplace without the source monorepo. Run:
 
 ```text
 node <plugin-root>/scripts/run-audit.mjs <command> <flags>
 ```
 
-If the runner reports an unbuilt engine, run `npm install` and `npm run build -w @everywhere-qa/engine` from the repository root. If Chromium is missing, run `npx playwright install chromium` from the repository root.
+Before the first audit, run `node <plugin-root>/scripts/run-audit.mjs setup`. This downloads the matching Playwright Chromium browser and therefore requires network access and approval. If npm cannot start, confirm Node.js 20+ and npm are installed.
+
+When `everywhere.config.json` exists in the target repository, inspect it and pass `--config <path>`. It may list up to ten explicit same-origin routes and override the four built-in profiles. Never invent routes or crawl a sitemap.
 
 ## Choose authorization mode
 
@@ -51,11 +53,12 @@ node <plugin-root>/scripts/run-audit.mjs audit --url <absolute-url> --repo <repo
 node <plugin-root>/scripts/run-audit.mjs verify --baseline <baseline-report.json> --url <absolute-url> --repo <repo-root> --out <verification-dir>
 ```
 
-8. Report fixed, remaining, and introduced findings plus the score delta. Do not claim success if a new serious or critical finding appears.
+8. For release-readiness requests, append `--gate regression`. The report is still written, but the command exits with code 2 if the overall score drops or a new serious/critical deterministic finding appears.
+9. Review the matched before/after screenshots in `report.html`. Report fixed, remaining, and introduced findings plus the score delta. Do not claim success if a new serious or critical finding appears or the visual result is worse.
 
 ## Boundaries
 
-- Support Chromium. Audit any reachable HTTP(S) page; promise source-aware repairs only for React/Next.js TypeScript.
+- Support Chromium. Audit any explicitly listed reachable HTTP(S) page; promise source-aware repairs only for React/Next.js TypeScript.
 - Never claim WCAG certification, legal compliance, translation quality, cultural correctness, or complete accessibility coverage.
 - Never upload source, screenshots, or report data. The runner is local-only.
 - Do not translate production copy, add authentication, or change product behavior unless the user explicitly expands scope.

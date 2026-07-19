@@ -6,6 +6,8 @@ export interface FindingInput {
   pillar: Pillar;
   severity: Severity;
   scenario: string;
+  pageId?: string;
+  pageUrl?: string;
   selector?: string;
   message: string;
   evidence: string;
@@ -16,7 +18,7 @@ export interface FindingInput {
 
 export function finding(input: FindingInput): Finding {
   const selector = input.selector ?? "document";
-  const signature = [input.ruleId, input.scenario, selector, input.message].join("|");
+  const signature = [input.pageId ?? "global", input.ruleId, input.scenario, selector, input.message].join("|");
   const id = createHash("sha1").update(signature).digest("hex").slice(0, 12);
   return {
     id,
@@ -24,6 +26,8 @@ export function finding(input: FindingInput): Finding {
     pillar: input.pillar,
     severity: input.severity,
     scenario: input.scenario,
+    ...(input.pageId ? { pageId: input.pageId } : {}),
+    ...(input.pageUrl ? { pageUrl: input.pageUrl } : {}),
     selector,
     message: input.message,
     evidence: input.evidence,
@@ -45,5 +49,5 @@ export function dedupeFindings(findings: Finding[]): Finding[] {
 }
 
 export function stableSignature(item: Finding): string {
-  return [item.ruleId, item.scenario, item.selector].join("|");
+  return [item.pageId ?? "target", item.ruleId, item.scenario, item.selector].join("|");
 }

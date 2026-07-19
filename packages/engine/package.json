@@ -1,6 +1,6 @@
 {
-  "name": "@everywhere-qa/engine",
-  "version": "0.1.0",
+  "name": "everywhere-qa",
+  "version": "0.2.0",
   "description": "Deterministic global-readiness audit engine for Everywhere QA",
   "type": "module",
   "license": "MIT",
@@ -9,16 +9,25 @@
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": ["dist", "README.md", "LICENSE"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GuduruBharath-hub/EverywhereQA.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://everywhere-qa-demo-2ifz.vercel.app/",
+  "bugs": "https://github.com/GuduruBharath-hub/EverywhereQA/issues",
+  "keywords": ["accessibility", "localization", "rtl", "playwright", "codex", "qa"],
+  "publishConfig": { "access": "public" },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@axe-core/playwright": "^4.10.2",
-    "axe-core": "^4.10.2",
-    "playwright": "^1.54.2"
+    "@axe-core/playwright": "4.12.1",
+    "axe-core": "4.12.1",
+    "playwright": "1.61.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.30",

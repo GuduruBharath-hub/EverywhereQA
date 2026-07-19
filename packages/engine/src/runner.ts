@@ -1,21 +1,22 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { mkdir } from "node:fs/promises";
-import { join, relative, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { dedupeFindings, finding } from "./findings.js";
-import { calculateScores, compareReports } from "./scoring.js";
+import { calculatePageScores, compareReports, evaluateGate } from "./scoring.js";
 import { scanSource } from "./source-scan.js";
-import { writeReport } from "./report.js";
-import type { AuditOptions, AuditReport, Finding, ScenarioResult, Severity } from "./types.js";
+import { assertBaselineCompatible, copyBaselineScreenshots, writeReport } from "./report.js";
+import type { AuditOptions, AuditPage, AuditProfiles, AuditReport, Finding, ScenarioKind, ScenarioResult, Severity } from "./types.js";
 
 const require = createRequire(import.meta.url);
 const playwrightVersion = (require("playwright/package.json") as { version: string }).version;
 const axeVersion = (require("axe-core/package.json") as { version: string }).version;
-const ENGINE_VERSION = "0.1.0";
+const ENGINE_VERSION = "0.2.0";
 
 type LayoutIssue = { selector: string; reason: string };
+type ScenarioRun = { scenario: ScenarioResult; findings: Finding[] };
 
 function impactSeverity(impact: string | null | undefined): Severity {
   if (impact === "critical") return "critical";
@@ -24,13 +25,21 @@ function impactSeverity(impact: string | null | undefined): Severity {
   return "moderate";
 }
 
-async function gotoTarget(page: Page, url: string, timeoutMs: number): Promise<number> {
+function scenarioId(page: AuditPage, kind: ScenarioKind): string {
+  return `${page.id}:${kind}`;
+}
+
+function pageFinding(page: AuditPage, kind: ScenarioKind, input: Omit<Parameters<typeof finding>[0], "scenario" | "pageId" | "pageUrl">): Finding {
+  return finding({ ...input, scenario: scenarioId(page, kind), pageId: page.id, pageUrl: page.url });
+}
+
+async function gotoTarget(browserPage: Page, page: AuditPage, timeoutMs: number): Promise<number> {
   const started = Date.now();
   try {
-    const response = await page.goto(url, { waitUntil: "load", timeout: timeoutMs });
+    const response = await browserPage.goto(page.url, { waitUntil: "load", timeout: timeoutMs });
     if (response && response.status() >= 400) throw new Error(`HTTP ${response.status()} ${response.statusText()}`);
   } catch (error) {
-    throw new Error(`Could not load ${url}. Start the app and confirm the URL is reachable. ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Could not load ${page.url}. Start the app and confirm the URL is reachable. ${error instanceof Error ? error.message : String(error)}`);
   }
   return Date.now() - started;
 }
@@ -85,31 +94,30 @@ async function close(context: BrowserContext): Promise<void> {
   await context.close().catch(() => undefined);
 }
 
-async function runAccessibility(browser: Browser, options: AuditOptions, screenshotDir: string, timeoutMs: number): Promise<{ scenario: ScenarioResult; findings: Finding[] }> {
-  const context = await browser.newContext({ locale: "en-US", viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+async function runAccessibility(browser: Browser, target: AuditPage, profile: AuditProfiles["accessibility"], screenshotDir: string, timeoutMs: number): Promise<ScenarioRun> {
+  const kind = "accessibility" as const;
+  const context = await browser.newContext({ locale: profile.locale, viewport: profile.viewport, reducedMotion: "reduce" });
   try {
     const page = await context.newPage();
-    const durationMs = await gotoTarget(page, options.url, timeoutMs);
-    const screenshot = await capture(page, screenshotDir, "accessibility-desktop");
+    const durationMs = await gotoTarget(page, target, timeoutMs);
+    const screenshot = await capture(page, screenshotDir, `${target.id}--accessibility`);
     const results = await new AxeBuilder({ page }).analyze();
-    const findings = results.violations.map((violation) => finding({
+    const findings = results.violations.map((violation) => pageFinding(target, kind, {
       ruleId: `axe-${violation.id}`,
       pillar: "accessibility",
       severity: impactSeverity(violation.impact),
-      scenario: "accessibility-desktop",
       selector: String(violation.nodes[0]?.target[0] ?? "document"),
       message: violation.help,
       evidence: screenshot,
       remediation: violation.nodes[0]?.failureSummary ?? violation.description,
       helpUrl: violation.helpUrl
     }));
-    const focus = await page.evaluate(async () => {
-      const candidates = [...document.querySelectorAll<HTMLElement>("a[href],button,input,select,textarea,[tabindex]:not([tabindex='-1'])")].filter((el) => {
-        const style = getComputedStyle(el);
-        return style.display !== "none" && style.visibility !== "hidden" && !el.hasAttribute("disabled");
-      });
-      return { candidateCount: candidates.length };
-    });
+    const focus = await page.evaluate(() => ({
+      candidateCount: [...document.querySelectorAll<HTMLElement>("a[href],button,input,select,textarea,[tabindex]:not([tabindex='-1'])")].filter((element) => {
+        const style = getComputedStyle(element);
+        return style.display !== "none" && style.visibility !== "hidden" && !element.hasAttribute("disabled");
+      }).length
+    }));
     const focused = new Set<string>();
     for (let index = 0; index < Math.min(12, focus.candidateCount + 2); index += 1) {
       await page.keyboard.press("Tab");
@@ -119,35 +127,37 @@ async function runAccessibility(browser: Browser, options: AuditOptions, screens
       }));
     }
     if (focus.candidateCount > 0 && [...focused].filter((value) => !["BODY", "HTML", "none"].includes(value)).length === 0) {
-      findings.push(finding({ ruleId: "keyboard-no-focus", pillar: "accessibility", severity: "serious", scenario: "accessibility-desktop", message: "Keyboard traversal did not reach an interactive element.", evidence: screenshot, remediation: "Use native interactive controls and preserve a visible, logical tab order." }));
+      findings.push(pageFinding(target, kind, { ruleId: "keyboard-no-focus", pillar: "accessibility", severity: "serious", message: "Keyboard traversal did not reach an interactive element.", evidence: screenshot, remediation: "Use native interactive controls and preserve a visible, logical tab order." }));
     }
-    return { scenario: { id: "accessibility-desktop", label: "Keyboard and assistive technology", locale: "en-US", viewport: { width: 1440, height: 900 }, durationMs, screenshot, status: findings.length ? "completed-with-findings" : "passed" }, findings };
+    return { scenario: { id: scenarioId(target, kind), kind, label: "Keyboard and assistive technology", pageId: target.id, pageUrl: target.url, locale: profile.locale, viewport: profile.viewport, durationMs, screenshot, status: findings.length ? "completed-with-findings" : "passed" }, findings };
   } finally { await close(context); }
 }
 
-async function runRtl(browser: Browser, options: AuditOptions, screenshotDir: string, timeoutMs: number): Promise<{ scenario: ScenarioResult; findings: Finding[] }> {
-  const context = await browser.newContext({ locale: "ar-SA", timezoneId: "Asia/Riyadh", viewport: { width: 390, height: 844 }, isMobile: true, deviceScaleFactor: 1 });
+async function runRtl(browser: Browser, target: AuditPage, profile: AuditProfiles["rtl"], screenshotDir: string, timeoutMs: number): Promise<ScenarioRun> {
+  const kind = "rtl" as const;
+  const context = await browser.newContext({ locale: profile.locale, timezoneId: profile.timezoneId, viewport: profile.viewport, isMobile: true, deviceScaleFactor: 1 });
   try {
     const page = await context.newPage();
-    const durationMs = await gotoTarget(page, options.url, timeoutMs);
+    const durationMs = await gotoTarget(page, target, timeoutMs);
     await page.waitForTimeout(150);
     const declaredDirection = await page.evaluate(() => document.documentElement.getAttribute("dir"));
     await page.evaluate(() => { document.documentElement.dir = "rtl"; document.documentElement.lang = "ar"; });
     await page.waitForTimeout(100);
-    const screenshot = await capture(page, screenshotDir, "arabic-rtl-mobile");
-    const findings = (await layoutIssues(page)).map((issue) => finding({ ruleId: "rtl-layout-overflow", pillar: "rtl", severity: issue.selector === "html" ? "serious" : "moderate", scenario: "arabic-rtl-mobile", selector: issue.selector, message: issue.reason, evidence: screenshot, remediation: "Use fluid sizing and CSS logical properties, then verify this control in a 390px RTL viewport." }));
-    if (declaredDirection !== "rtl") findings.push(finding({ ruleId: "rtl-direction-incorrect", pillar: "rtl", severity: "minor", scenario: "arabic-rtl-mobile", selector: "html", message: declaredDirection ? `The page declares dir=\"${declaredDirection}\" for an Arabic browser context.` : "The page does not declare a text direction for an Arabic browser context.", evidence: screenshot, remediation: "Set the html dir attribute from the active locale and update it when the locale changes." }));
-    return { scenario: { id: "arabic-rtl-mobile", label: "Arabic right-to-left mobile", locale: "ar-SA", viewport: { width: 390, height: 844 }, durationMs, screenshot, status: findings.length ? "completed-with-findings" : "passed" }, findings };
+    const screenshot = await capture(page, screenshotDir, `${target.id}--rtl`);
+    const findings = (await layoutIssues(page)).map((issue) => pageFinding(target, kind, { ruleId: "rtl-layout-overflow", pillar: "rtl", severity: issue.selector === "html" ? "serious" : "moderate", selector: issue.selector, message: issue.reason, evidence: screenshot, remediation: `Use fluid sizing and CSS logical properties, then verify this control in a ${profile.viewport.width}px RTL viewport.` }));
+    if (declaredDirection !== "rtl") findings.push(pageFinding(target, kind, { ruleId: "rtl-direction-incorrect", pillar: "rtl", severity: "minor", selector: "html", message: declaredDirection ? `The page declares dir="${declaredDirection}" for an Arabic browser context.` : "The page does not declare a text direction for an Arabic browser context.", evidence: screenshot, remediation: "Set the html dir attribute from the active locale and update it when the locale changes." }));
+    return { scenario: { id: scenarioId(target, kind), kind, label: "Right-to-left mobile", pageId: target.id, pageUrl: target.url, locale: profile.locale, viewport: profile.viewport, durationMs, screenshot, status: findings.length ? "completed-with-findings" : "passed" }, findings };
   } finally { await close(context); }
 }
 
-async function runPseudo(browser: Browser, options: AuditOptions, screenshotDir: string, timeoutMs: number): Promise<{ scenario: ScenarioResult; findings: Finding[] }> {
-  const context = await browser.newContext({ locale: "en-US", viewport: { width: 390, height: 844 }, isMobile: true });
+async function runPseudo(browser: Browser, target: AuditPage, profile: AuditProfiles["textExpansion"], screenshotDir: string, timeoutMs: number): Promise<ScenarioRun> {
+  const kind = "text-expansion" as const;
+  const context = await browser.newContext({ locale: profile.locale === "en-XA" ? "en-US" : profile.locale, viewport: profile.viewport, isMobile: true });
   try {
     const page = await context.newPage();
-    const durationMs = await gotoTarget(page, options.url, timeoutMs);
+    const durationMs = await gotoTarget(page, target, timeoutMs);
     const before = new Set((await layoutIssues(page)).map((item) => `${item.selector}|${item.reason}`));
-    await page.evaluate(() => {
+    await page.evaluate((ratio) => {
       const accents: Record<string, string> = { a:"á",b:"ƀ",c:"ç",d:"đ",e:"é",f:"ƒ",g:"ğ",h:"ħ",i:"í",j:"ĵ",k:"ķ",l:"ľ",m:"ɱ",n:"ñ",o:"ó",p:"þ",q:"ɋ",r:"ř",s:"š",t:"ŧ",u:"ú",v:"ṽ",w:"ŵ",x:"ẋ",y:"ý",z:"ž" };
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, { acceptNode(node) {
         const parent = node.parentElement;
@@ -162,19 +172,21 @@ async function runPseudo(browser: Browser, options: AuditOptions, screenshotDir:
           const replacement = accents[char.toLowerCase()];
           return replacement ? (char === char.toLowerCase() ? replacement : replacement.toUpperCase()) : char;
         }).join("");
-        node.textContent = `[${transformed} ${"~".repeat(Math.max(1, Math.ceil(text.length * .4)))}]`;
+        node.textContent = `[${transformed} ${"~".repeat(Math.max(1, Math.ceil(text.length * ratio)))}]`;
       }
-    });
+    }, profile.ratio);
     await page.waitForTimeout(100);
-    const screenshot = await capture(page, screenshotDir, "pseudo-expanded-mobile");
+    const screenshot = await capture(page, screenshotDir, `${target.id}--text-expansion`);
     const newIssues = (await layoutIssues(page)).filter((item) => !before.has(`${item.selector}|${item.reason}`));
-    const findings = newIssues.map((issue) => finding({ ruleId: "text-expansion-layout", pillar: "rtl", severity: issue.selector === "html" ? "serious" : "moderate", scenario: "pseudo-expanded-mobile", selector: issue.selector, message: `40% text expansion caused a layout failure: ${issue.reason}`, evidence: screenshot, remediation: "Remove fixed text dimensions, allow wrapping, and retest with expanded labels." }));
-    return { scenario: { id: "pseudo-expanded-mobile", label: "40% pseudo-localized text expansion", locale: "en-XA", viewport: { width: 390, height: 844 }, durationMs, screenshot, status: findings.length ? "completed-with-findings" : "passed" }, findings };
+    const percentage = Math.round(profile.ratio * 100);
+    const findings = newIssues.map((issue) => pageFinding(target, kind, { ruleId: "text-expansion-layout", pillar: "rtl", severity: issue.selector === "html" ? "serious" : "moderate", selector: issue.selector, message: `${percentage}% text expansion caused a layout failure: ${issue.reason}`, evidence: screenshot, remediation: "Remove fixed text dimensions, allow wrapping, and retest with expanded labels." }));
+    return { scenario: { id: scenarioId(target, kind), kind, label: `${percentage}% pseudo-localized text expansion`, pageId: target.id, pageUrl: target.url, locale: profile.locale, viewport: profile.viewport, durationMs, screenshot, status: findings.length ? "completed-with-findings" : "passed" }, findings };
   } finally { await close(context); }
 }
 
-async function runIndiaSlow(browser: Browser, options: AuditOptions, screenshotDir: string, timeoutMs: number): Promise<{ scenario: ScenarioResult; findings: Finding[] }> {
-  const context = await browser.newContext({ locale: "hi-IN", timezoneId: "Asia/Kolkata", viewport: { width: 390, height: 844 }, isMobile: true });
+async function runResilience(browser: Browser, target: AuditPage, profile: AuditProfiles["resilience"], screenshotDir: string, timeoutMs: number): Promise<ScenarioRun> {
+  const kind = "resilience" as const;
+  const context = await browser.newContext({ locale: profile.locale, timezoneId: profile.timezoneId, viewport: profile.viewport, isMobile: true });
   try {
     const page = await context.newPage();
     const failedRequests: string[] = [];
@@ -183,17 +195,23 @@ async function runIndiaSlow(browser: Browser, options: AuditOptions, screenshotD
     page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
     const session = await context.newCDPSession(page);
     await session.send("Network.enable");
-    await session.send("Network.emulateNetworkConditions", { offline: false, latency: 250, downloadThroughput: 96_000, uploadThroughput: 48_000, connectionType: "cellular3g" });
-    const durationMs = await gotoTarget(page, options.url, timeoutMs);
+    await session.send("Network.emulateNetworkConditions", {
+      offline: false,
+      latency: profile.network.latencyMs,
+      downloadThroughput: profile.network.downloadKbps * 1024 / 8,
+      uploadThroughput: profile.network.uploadKbps * 1024 / 8,
+      connectionType: "cellular3g"
+    });
+    const durationMs = await gotoTarget(page, target, timeoutMs);
     await page.waitForTimeout(200);
-    const screenshot = await capture(page, screenshotDir, "india-slow-mobile");
+    const screenshot = await capture(page, screenshotDir, `${target.id}--resilience`);
     const findings: Finding[] = [];
-    if (durationMs > 5_000) findings.push(finding({ ruleId: "slow-network-load", pillar: "resilience", severity: durationMs > 10_000 ? "serious" : "moderate", scenario: "india-slow-mobile", selector: "document", message: `The page took ${(durationMs / 1000).toFixed(1)}s to settle on the throttled mobile profile.`, evidence: screenshot, remediation: "Reduce blocking JavaScript and media, split bundles, and render useful content before optional resources." }));
-    if (failedRequests.length) findings.push(finding({ ruleId: "slow-network-request-failure", pillar: "resilience", severity: "serious", scenario: "india-slow-mobile", selector: "network", message: `${failedRequests.length} request(s) failed on the throttled profile.`, evidence: failedRequests.slice(0, 3).join("\n"), remediation: "Handle transient failures, add retry boundaries, and avoid making core UI depend on optional resources." }));
-    if (consoleErrors.length) findings.push(finding({ ruleId: "runtime-console-error", pillar: "resilience", severity: "moderate", scenario: "india-slow-mobile", selector: "console", message: `${consoleErrors.length} console error(s) occurred on the localized mobile profile.`, evidence: consoleErrors.slice(0, 3).join("\n"), remediation: "Resolve the reported runtime errors and ensure fallback UI remains usable." }));
+    if (durationMs > 5_000) findings.push(pageFinding(target, kind, { ruleId: "slow-network-load", pillar: "resilience", severity: durationMs > 10_000 ? "serious" : "moderate", selector: "document", message: `The page took ${(durationMs / 1000).toFixed(1)}s to settle on the throttled mobile profile.`, evidence: screenshot, remediation: "Reduce blocking JavaScript and media, split bundles, and render useful content before optional resources." }));
+    if (failedRequests.length) findings.push(pageFinding(target, kind, { ruleId: "slow-network-request-failure", pillar: "resilience", severity: "serious", selector: "network", message: `${failedRequests.length} request(s) failed on the throttled profile.`, evidence: failedRequests.slice(0, 3).join("\n"), remediation: "Handle transient failures, add retry boundaries, and avoid making core UI depend on optional resources." }));
+    if (consoleErrors.length) findings.push(pageFinding(target, kind, { ruleId: "runtime-console-error", pillar: "resilience", severity: "moderate", selector: "console", message: `${consoleErrors.length} console error(s) occurred on the localized mobile profile.`, evidence: consoleErrors.slice(0, 3).join("\n"), remediation: "Resolve the reported runtime errors and ensure fallback UI remains usable." }));
     const lang = await page.evaluate(() => document.documentElement.lang);
-    if (!lang) findings.push(finding({ ruleId: "locale-language-missing", pillar: "locale", severity: "moderate", scenario: "india-slow-mobile", selector: "html", message: "The document language is missing.", evidence: screenshot, remediation: "Set a valid html lang attribute so assistive technology can choose the correct pronunciation rules." }));
-    return { scenario: { id: "india-slow-mobile", label: "India locale on constrained mobile", locale: "hi-IN", viewport: { width: 390, height: 844 }, durationMs, screenshot, status: findings.length ? "completed-with-findings" : "passed" }, findings };
+    if (!lang) findings.push(pageFinding(target, kind, { ruleId: "locale-language-missing", pillar: "locale", severity: "moderate", selector: "html", message: "The document language is missing.", evidence: screenshot, remediation: "Set a valid html lang attribute so assistive technology can choose the correct pronunciation rules." }));
+    return { scenario: { id: scenarioId(target, kind), kind, label: "Localized constrained mobile", pageId: target.id, pageUrl: target.url, locale: profile.locale, viewport: profile.viewport, durationMs, screenshot, status: findings.length ? "completed-with-findings" : "passed" }, findings };
   } finally { await close(context); }
 }
 
@@ -201,38 +219,47 @@ export async function runAudit(options: AuditOptions): Promise<AuditReport> {
   const timeoutMs = options.timeoutMs ?? 30_000;
   const outDir = resolve(options.outDir);
   const screenshotDir = join(outDir, "screenshots");
+  if (options.baseline) assertBaselineCompatible(options.baseline, options.config);
   await mkdir(screenshotDir, { recursive: true });
   let browser: Browser;
   try {
     browser = await chromium.launch({ headless: true });
   } catch (error) {
-    throw new Error(`Chromium is unavailable. Run \"npx playwright install chromium\" and retry. ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Chromium is unavailable. Run "everywhere setup" and retry. ${error instanceof Error ? error.message : String(error)}`);
   }
   try {
-    const runs = [];
-    runs.push(await runAccessibility(browser, options, screenshotDir, timeoutMs));
-    runs.push(await runRtl(browser, options, screenshotDir, timeoutMs));
-    runs.push(await runPseudo(browser, options, screenshotDir, timeoutMs));
-    runs.push(await runIndiaSlow(browser, options, screenshotDir, timeoutMs));
+    const runs: ScenarioRun[] = [];
+    for (const target of options.config.pages) {
+      runs.push(await runAccessibility(browser, target, options.config.profiles.accessibility, screenshotDir, timeoutMs));
+      runs.push(await runRtl(browser, target, options.config.profiles.rtl, screenshotDir, timeoutMs));
+      runs.push(await runPseudo(browser, target, options.config.profiles.textExpansion, screenshotDir, timeoutMs));
+      runs.push(await runResilience(browser, target, options.config.profiles.resilience, screenshotDir, timeoutMs));
+    }
     const browserFindings = dedupeFindings(runs.flatMap((run) => run.findings));
     const sourceFindings = options.repo ? await scanSource(resolve(options.repo)) : [];
     const findings = browserFindings.filter((item) => item.confidence === "deterministic");
     const advisories = dedupeFindings([...browserFindings.filter((item) => item.confidence === "heuristic"), ...sourceFindings]);
-    const scores = calculateScores(findings);
+    const { scores, pageScores } = calculatePageScores(findings, options.config.pages);
     const report: AuditReport = {
-      schemaVersion: "1.0",
+      schemaVersion: "1.1",
       runId: randomUUID().slice(0, 8),
-      target: { url: options.url, ...(options.repo ? { repo: resolve(options.repo) } : {}) },
+      target: { url: options.url, ...(options.repo ? { repo: resolve(options.repo) } : {}), pages: options.config.pages, profileSignature: options.config.profileSignature },
       generatedAt: new Date().toISOString(),
       tools: { everywhereQa: ENGINE_VERSION, playwright: playwrightVersion, axeCore: axeVersion },
       scenarios: runs.map((run) => run.scenario),
       findings,
       advisories,
       scores,
+      pageScores,
       summary: { deterministic: findings.length, advisory: advisories.length, critical: findings.filter((item) => item.severity === "critical").length },
       disclaimer: "Automated evidence is incomplete. Everywhere QA is not a WCAG certification, legal opinion, or translation-quality assessment. Human review remains required."
     };
-    if (options.baseline) report.verification = compareReports(options.baseline, findings, scores.overall);
+    if (options.baseline) {
+      if (!options.baselineDir) throw new Error("Verification requires the baseline report directory.");
+      report.verification = compareReports(options.baseline, findings, scores.overall);
+      report.verification.visualComparisons = await copyBaselineScreenshots(options.baseline, report.scenarios, options.baselineDir, outDir);
+      report.verification.gate = evaluateGate(report.verification, options.gatePolicy ?? "off");
+    }
     await writeReport(report, outDir);
     return report;
   } finally {

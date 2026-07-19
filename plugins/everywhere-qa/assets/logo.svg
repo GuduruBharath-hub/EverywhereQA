@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 180" role="img" aria-labelledby="title">
-  <title id="title">Everywhere QA</title>
-  <rect width="720" height="180" rx="34" fill="#0D100F"/>
-  <g transform="translate(28 26)"><circle cx="64" cy="64" r="47" fill="none" stroke="#9CE6BD" stroke-width="8"/><path d="M17 64h94M64 17c15 14 23 30 23 47s-8 33-23 47M64 17C49 31 41 47 41 64s8 33 23 47" fill="none" stroke="#9CE6BD" stroke-width="6"/><path d="m49 65 11 11 24-27" fill="none" stroke="#F3CF70" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></g>
-  <text x="175" y="88" fill="#F2EFE7" font-family="Arial, sans-serif" font-weight="700" font-size="52" letter-spacing="-2">Everywhere QA</text>
-  <text x="178" y="125" fill="#9AA39E" font-family="monospace" font-size="18" letter-spacing="2">FIX ONCE. WORK EVERYWHERE.</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Everywhere QA logo</title>
+  <rect width="512" height="512" rx="128" fill="#F2EFE7"/>
+  <rect x="52" y="52" width="408" height="408" rx="112" fill="#1D493B"/>
+  <circle cx="256" cy="246" r="126" fill="none" stroke="#C8F5DA" stroke-width="28"/>
+  <path d="M130 246h252M256 120c41 37 63 80 63 126s-22 89-63 126M256 120c-41 37-63 80-63 126s22 89 63 126" fill="none" stroke="#C8F5DA" stroke-width="22" stroke-linecap="round"/>
+  <path d="m205 249 38 38 82-94" fill="none" stroke="#FFD56A" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

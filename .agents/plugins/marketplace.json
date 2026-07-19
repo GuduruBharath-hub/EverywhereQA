@@ -1,7 +1,7 @@
 {
-  "name": "personal",
+  "name": "everywhere-qa",
   "interface": {
-    "displayName": "Personal"
+    "displayName": "Everywhere QA"
   },
   "plugins": [
     {
