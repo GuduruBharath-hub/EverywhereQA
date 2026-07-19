@@ -1,0 +1,99 @@
+.section {
+  display: grid;
+  grid-template-columns: .72fr 1.28fr;
+  gap: 64px;
+  padding-block: 130px;
+  align-items: center;
+}
+
+.intro h2 {
+  font-size: clamp(42px, 5vw, 68px);
+  line-height: 1;
+  letter-spacing: -.055em;
+  margin: 28px 0;
+}
+
+.intro p {
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 45ch;
+}
+
+.guide {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  font-size: 12px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--deep-mint);
+  padding-bottom: 5px;
+}
+
+.guide span { color: var(--deep-mint); }
+
+.panel {
+  background: var(--night);
+  color: white;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(20, 30, 25, .18);
+}
+
+.head {
+  min-height: 66px;
+  background: #191d1b;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 18px;
+  border-bottom: 1px solid #303532;
+}
+
+.dots { display: flex; gap: 6px; }
+.dots span { width: 8px; height: 8px; border-radius: 50%; background: #555; }
+.dots span:first-child { background: var(--coral); }
+.dots span:nth-child(2) { background: var(--yellow); }
+.headline { display: grid; gap: 3px; }
+.headline strong { font-size: 12px; }
+.headline small { color: #8f9893; font: 9px DM Mono; }
+.version { margin-left: auto; border: 1px solid #405048; border-radius: 99px; color: var(--mint); padding: 5px 8px; font: 9px DM Mono; }
+
+.steps { list-style: none; margin: 0; padding: 8px 18px; }
+.steps li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 11px; padding: 15px 0; border-bottom: 1px solid #29302c; }
+.number { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #23352e; color: var(--mint); font: 10px DM Mono; }
+.command { min-width: 0; }
+.command b { display: block; font-size: 11px; margin-bottom: 7px; }
+.command code, .prompt code, .cli code { display: block; color: #c6d0cb; font: 10.5px/1.55 DM Mono; overflow-wrap: anywhere; }
+.panel button { border: 1px solid #46524c; border-radius: 7px; background: transparent; color: #b8c2bd; padding: 6px 8px; font: 10px DM Mono; cursor: pointer; }
+.panel button:hover, .panel button:focus-visible { border-color: var(--mint); color: var(--mint); outline: none; }
+
+.prompt { position: relative; margin: 10px 18px 16px; padding: 15px 90px 15px 15px; border: 1px solid #365145; border-radius: 10px; background: #17231e; }
+.prompt > div { display: grid; gap: 4px; margin-bottom: 10px; }
+.prompt b { font-size: 11px; }
+.prompt span { color: #89928d; font-size: 9px; line-height: 1.5; }
+.prompt button { position: absolute; right: 12px; bottom: 12px; }
+
+.cli { border-top: 1px solid #303532; }
+.cli summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px 18px; cursor: pointer; }
+.cli summary span { font-size: 11px; font-weight: 700; }
+.cli summary small { color: #89928d; font: 9px DM Mono; }
+.cli > div { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 0 18px 17px; }
+.cli code { background: #151917; border-radius: 7px; padding: 11px; }
+
+@media (max-width: 900px) {
+  .section { grid-template-columns: 1fr; gap: 40px; }
+}
+
+@media (max-width: 600px) {
+  .section { padding-block: 80px; }
+  .panel { border-radius: 14px; }
+  .steps { padding-inline: 12px; }
+  .steps li { grid-template-columns: 26px minmax(0, 1fr); align-items: start; }
+  .steps li > button { grid-column: 2; justify-self: start; }
+  .prompt { padding: 14px; margin-inline: 12px; }
+  .prompt button { position: static; margin-top: 12px; }
+  .cli summary { align-items: flex-start; flex-direction: column; }
+  .cli > div { grid-template-columns: 1fr; }
+  .cli > div button { justify-self: start; }
+}

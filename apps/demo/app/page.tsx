@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { BrandMark } from "../components/brand-mark";
+import { InstallPanel } from "../components/install-panel";
+import installStyles from "../components/install-panel.module.css";
 import { Passport } from "../components/passport";
-
-const install = `codex plugin marketplace add GuduruBharath-hub/EverywhereQA --ref v0.2.0
-codex plugin add everywhere-qa@everywhere-qa
-npx --yes everywhere-qa@0.2.0 setup`;
 
 export default function Home() {
   return <main>
@@ -20,7 +18,7 @@ export default function Home() {
       <article><b>03</b><div className="step-icon">✓</div><h3>Prove the delta</h3><p>See matched before/after screenshots, then gate a release if the score drops or serious barriers appear.</p><code>everywhere verify --gate regression</code></article>
     </div></section>
     <section className="contexts"><div className="wrap"><span className="section-no">02 / Test matrix</span><h2>Four views of every route.</h2><div className="context-grid"><article><span>⌨</span><h3>Keyboard + assistive tech</h3><p>axe-core evidence, focus traversal, labels, semantics, and visible controls.</p></article><article className="arabic"><span>ع</span><h3>RTL mobile</h3><p>Direction, overflow, clipped interactions, and logical layout in a configurable locale.</p></article><article><span>↔</span><h3>Text expansion</h3><p>Pseudo-localized copy exposes fixed widths and labels that cannot breathe.</p></article><article><span>3G</span><h3>Constrained mobile</h3><p>Configurable locale, timezone, network latency, failed requests, and runtime errors.</p></article></div></div></section>
-    <section id="install" className="install wrap"><div><span className="section-no">03 / Try it</span><h2>Your next users<br/>are already everywhere.</h2><p>Install the public Git marketplace and pinned npm runtime. No repository clone or local build is required.</p></div><div className="terminal"><div><span/><span/><span/><b>PowerShell / shell</b></div><pre>{install}</pre><p><span>$</span> Audit and fix this app for users everywhere: http://localhost:3000</p></div></section>
+    <section id="install" className={`${installStyles.section} wrap`}><div className={installStyles.intro}><span className="section-no">03 / Try it</span><h2>Your next users<br/>are already everywhere.</h2><p>Use the Codex plugin for the complete audit, repair, and verification loop. Use the public CLI when you only need a deterministic read-only audit. Neither path requires cloning this repository.</p><a className={installStyles.guide} href="https://github.com/GuduruBharath-hub/EverywhereQA/blob/v0.2.0/docs/INSTALLATION.md" target="_blank" rel="noreferrer">Read the complete installation guide <span>↗</span></a></div><InstallPanel /></section>
     <footer><div className="wrap"><div className="brand"><BrandMark />Everywhere QA</div><p>Automated evidence is incomplete. Not a certification, legal opinion, or translation assessment.</p><span>Built with Codex + GPT‑5.6 · 2026</span></div></footer>
   </main>;
 }
